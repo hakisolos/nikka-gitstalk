@@ -88,6 +88,39 @@ app.get('/api/npmstalk', async (req, res) => {
     });
   }
 });
+app.get('/api/ringtones', async (req, res) => {
+    const { title } = req.query;
+
+    if (!title) {
+        return res.status(400).json({ error: 'Please provide a title query parameter' });
+    }
+
+    try {
+        const ringtones = await fetchRingtones(title); // Call the fetch function
+        res.json(ringtones);
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching ringtones', details: error.message });
+    }
+});
+
+// Function to fetch ringtones
+async function fetchRingtones(title) {
+    try {
+        const response = await axios.get('https://meloboom.com/en/search/' + title);
+        const $ = cheerio.load(response.data);
+        const results = [];
+        $('#__next > main > section > div.jsx-2244708474.container > div > div > div > div:nth-child(4) > div > div > div > ul > li').each((a, b) => {
+            results.push({
+                title: $(b).find('h4').text(),
+                source: 'https://meloboom.com/' + $(b).find('a').attr('href'),
+                audio: $(b).find('audio').attr('src'),
+            });
+        });
+        return results;
+    } catch (error) {
+        throw error;
+    }
+}
 
 
 // Start the server
