@@ -188,6 +188,89 @@ app.get('/api/tiktok', async (req, res) => {
         });
     }
 });
+async function fetchTikTokUserData(username) {
+    const url = `https://countik.com/tiktok-analytics/user/@${username}`;
+    try {
+        const { data } = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+            }
+        });
+
+        const $ = cheerio.load(data);
+        const userData = {
+            username: $('.username h2').text().trim(),
+            nickname: $('.nickname').text().trim(),
+            country: $('.acc-country').text().trim(),
+            profilePicture: $('.pic img').attr('src'),
+            profileUrl: $('.visit-btn a').attr('href'),
+            stats: {
+                totalFollowers: $('.user-stats .block:nth-child(1) p').text().trim(),
+                totalLikes: $('.user-stats .block:nth-child(2) p').text().trim(),
+                totalVideos: $('.user-stats .block:nth-child(3) p').text().trim(),
+                following: $('.user-stats .block:nth-child(4) p').text().trim()
+            },
+            engagementRates: {
+                overallEngagement: $('.total-engagement-rates .block:nth-child(1) p').text().trim(),
+                likesRate: $('.total-engagement-rates .block:nth-child(2) p').text().trim(),
+                commentsRate: $('.total-engagement-rates .block:nth-child(4) p').text().trim(),
+                sharesRate: $('.total-engagement-rates .block:nth-child(3) p').text().trim()
+            },
+            averageVideoPerformance: {
+                avgViews: $('.average-video-performance .block:nth-child(1) p').text().trim(),
+                avgLikes: $('.average-video-performance .block:nth-child(2) p').text().trim(),
+                avgComments: $('.average-video-performance .block:nth-child(3) p').text().trim(),
+                avgShares: $('.average-video-performance .block:nth-child(4) p').text().trim()
+            },
+            hashtags: $('.hashtags .item:nth-child(1) .mem').map((_, el) => $(el).text().trim()).get(),
+            mostUsedHashtags: $('.hashtags .item:nth-child(2) .span-tag').map((_, el) => ({
+                hashtag: $(el).find('.chosen').text().trim(),
+                count: $(el).find('.count').text().trim()
+            })).get(),
+            recentPosts: $('.recent-posts .item').map((_, post) => ({
+                image: $(post).find('.post-img img').attr('src'),
+                views: $(post).find('.post-data .data:nth-child(1) .value').text().trim(),
+                likes: $(post).find('.post-data .data:nth-child(2) .value').text().trim(),
+                comments: $(post).find('.post-data .data:nth-child(3) .value').text().trim(),
+                shares: $(post).find('.post-data .data:nth-child(4) .value').text().trim(),
+                hashtagsCount: $(post).find('.post-data .data:nth-child(5) .value').text().trim(),
+                mentions: $(post).find('.post-data .data:nth-child(6) .value').text().trim(),
+                saves: $(post).find('.post-data .data:nth-child(7) .value').text().trim(),
+                engagementRate: $(post).find('.post-data .medium-engagement .value').text().trim(),
+                description: $(post).find('.post-data .desc').text().trim(),
+                music: {
+                    title: $(post).find('.music-details a').text().trim(),
+                    audioUrl: $(post).find('.music-info audio source').attr('src')
+                },
+                createdTime: $(post).find('.extra-data .create-time p').text().trim()
+            })).get()
+        };
+
+        return userData;
+    } catch (error) {
+        console.error('Error fetching TikTok user data:', error.message);
+        throw new Error('Unable to fetch TikTok user data.');
+    }
+}
+
+// API endpoint
+app.get('/api/tiktok/user', async (req, res) => {
+    const { username } = req.query;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Please provide a username in the query parameter.' });
+    }
+
+    try {
+        const userData = await fetchTikTokUserData(username);
+        res.json(userData);
+    } catch (error) {
+        res.status(500).json({
+            error: 'Failed to fetch TikTok user data.',
+            details: error.message
+        });
+    }
+});
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
