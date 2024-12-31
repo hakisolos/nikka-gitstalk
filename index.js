@@ -271,6 +271,57 @@ app.get('/api/tiktok/user', async (req, res) => {
         });
     }
 });
+app.get('/anime-status1', async (req, res) => {
+  try {
+    const url = "https://shortstatusvideos.com/anime-video-status-download/";
+    const response = await axios.get(url);
+    const html = response.data;
+    const $ = cheerio.load(html);
+    const videos = [];
+
+    $("a.mks_button.mks_button_small.squared").each((index, element) => {
+      const link = $(element).attr("href");
+      const title = $(element).closest("p").prevAll("p").find("strong").text();
+      videos.push({ title, link });
+    });
+
+    const randomIndex = Math.floor(Math.random() * videos.length);
+    const randomVideo = videos[randomIndex];
+
+    res.json({ success: true, video: randomVideo });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Route to get anime video status from the second source
+app.get('/anime-status2', async (req, res) => {
+  try {
+    const url = "https://mobstatus.com/anime-whatsapp-status-video/";
+    const response = await axios.get(url);
+    const html = response.data;
+    const $ = cheerio.load(html);
+    const videos = [];
+    const title = $("strong").first().text();
+
+    $("a.mb-button.mb-style-glass.mb-size-tiny.mb-corners-pill.mb-text-style-heavy").each((index, element) => {
+      const link = $(element).attr("href");
+      videos.push({ title, link });
+    });
+
+    const randomIndex = Math.floor(Math.random() * videos.length);
+    const randomVideo = videos[randomIndex];
+
+    res.json({ success: true, video: randomVideo });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
