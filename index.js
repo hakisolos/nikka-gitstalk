@@ -3,6 +3,7 @@ const axios = require('axios');
 const cheerio = require("cheerio");
 const app = express();
 const PORT = process.env.PORT || 3000;
+const yts = require('yt-search');
 
 // Endpoint to fetch GitHub user data using query parameter
 app.get('/api/githubstalk', async (req, res) => {
@@ -524,6 +525,103 @@ app.get('/ytdl', async (req, res) => {
         });
     }
 });
+const formatAudio = ['mp3', 'm4a', 'webm', 'acc', 'flac', 'opus', 'ogg', 'wav'];
+const formatVideo = ['360', '480', '720', '1080', '1440', '4k'];
+
+const ytdlScraper = {
+    download: async (url, format) => {
+        if (!formatAudio.includes(format) && !formatVideo.includes(format)) {
+            throw new Error('Unsupported format. Please check the supported list.');
+        }
+
+        const config = {
+            method: 'GET',
+            url: `https://p.oceansaver.in/ajax/download.php?format=${format}&url=${encodeURIComponent(url)}&api=dfcb6d76f2f6a9894gjkege8a4ab232222`,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        };
+
+        try {
+            const response = await axios.request(config);
+
+            if (response.data && response.data.success) {
+                const { id, title, info } = response.data;
+                const { image } = info;
+                const downloadUrl = await ytdlScraper.checkProgress(id);
+
+                return {
+                    id: id,
+                    image: image,
+                    title: title,
+                    downloadUrl: downloadUrl
+                };
+            } else {
+                throw new Error('Failed to fetch video details.');
+            }
+        } catch (error) {
+            console.error('Error:', error.message);
+            throw error;
+        }
+    },
+    checkProgress: async (id) => {
+        const config = {
+            method: 'GET',
+            url: `https://p.oceansaver.in/ajax/progress.php?id=${id}`,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        };
+
+        try {
+            while (true) {
+                const response = await axios.request(config);
+
+                if (response.data && response.data.success && response.data.progress === 1000) {
+                    return response.data.download_url;
+                }
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Polling every 5 seconds
+            }
+        } catch (error) {
+            console.error('Error:', error.message);
+            throw error;
+        }
+    }
+};
+
+// API Route for downloading video/audio using query
+app.get('/ytdl2', async (req, res) => {
+    const { query, format } = req.query;
+
+    if (!query || !format) {
+        return res.status(400).json({ error: 'Missing required query parameters: query and format.' });
+    }
+
+    try {
+        // Use yt-search to get the first video result
+        const searchResults = await yts(query);
+        if (!searchResults.videos.length) {
+            return res.status(404).json({ error: 'No videos found for the given query.' });
+        }
+
+        const video = searchResults.videos[0]; // Take the first result
+        const videoUrl = video.url;
+
+        // Use the video URL to fetch the download link
+        const result = await ytdlScraper.download(videoUrl, format);
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
