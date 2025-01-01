@@ -372,6 +372,32 @@ app.get('/api/cocofun', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch data', details: error.message });
   }
 });
+async function ffstalk(id) {
+  try {
+    const response = await axios.get('https://allstars-apis.vercel.app/freefire?id=' + id);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error('Failed to fetch data from the Free Fire API');
+  }
+}
+
+// API Endpoint
+app.get('/api/ffstalk', async (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ error: 'ID parameter is required' });
+  }
+
+  try {
+    const data = await ffstalk(id);
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
