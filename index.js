@@ -375,69 +375,51 @@ app.get('/ytdl', async (req, res) => {
         });
     }
 });
-app.use(express.json());
-
-const ttsave = {
-    download: async (url) => {
-        const apiUrl = 'https://ttsave.app/download';
-        const headers = {
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Android 10; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0',
-            'Referer': 'https://ttsave.app/id'
-        };
-
-        const data = {
-            query: url,
-            language_id: "2"
-        };
-
-        try {
-            const response = await axios.post(apiUrl, data, { headers });
-            const html = response.data;
-            const result = ttsave.extract(html);
-            return result;
-        } catch (error) {
-            console.error('Error downloading video:', error);
-            throw error;
-        }
-    },
-    extract: (html) => {
-        const $ = cheerio.load(html);
-        const result = {};
-
-        result.uniqueId = $('#unique-id').val();
-        result.username = $('h2.font-extrabold').text().trim();
-        result.userHandle = $('a[title]').text().trim();
-        result.userProfileImage = $('img').attr('src');
-        result.description = $('p.oneliner').text().trim();
-        result.views = $('span:contains("K")').first().text().trim(); // Extracting views
-
-        result.downloadLinks = {
-            noWatermark: $('a[type="no-watermark"]').attr('href'),
-            withWatermark: $('a[type="watermark"]').attr('href'),
-            audio: $('a[type="audio"]').attr('href'),
-            profileImage: $('a[type="profile"]').attr('href'),
-            coverImage: $('a[type="cover"]').attr('href')
-        };
-
-        return result;
-    }
-};
-
-// API endpoint
-app.post('/api/tikdl', async (req, res) => {
-    const { url } = req.body;
-
+app.get('/api/tikdl', async (req, res) => {
+    const url = req.query.url; // Get the TikTok URL from query parameter
     if (!url) {
         return res.status(400).json({ error: 'URL is required' });
     }
 
+    const apiUrl = 'https://ttsave.app/download';
+    const headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Android 10; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0',
+        'Referer': 'https://ttsave.app/id'
+    };
+
+    const data = {
+        query: url,
+        language_id: "2"
+    };
+
     try {
-        const result = await ttsave.download(url);
-        res.json(result);
+        const response = await axios.post(apiUrl, data, { headers });
+        const html = response.data;
+
+        // Extract the data using Cheerio
+        const $ = cheerio.load(html);
+        const result = {
+            uniqueId: $('#unique-id').val(),
+            username: $('h2.font-extrabold').text().trim(),
+            userHandle: $('a[title]').text().trim(),
+            userProfileImage: $('img').attr('src'),
+            description: $('p.oneliner').text().trim(),
+            views: $('span:contains("K")').first().text().trim(),
+            downloadLinks: {
+                noWatermark: $('a[type="no-watermark"]').attr('href'),
+                withWatermark: $('a[type="watermark"]').attr('href'),
+                audio: $('a[type="audio"]').attr('href'),
+                profileImage: $('a[type="profile"]').attr('href'),
+                coverImage: $('a[type="cover"]').attr('href')
+            }
+        };
+
+        res.status(200).json(result);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to download video' });
+        console.error('Error downloading video:', error);
+        res.status(500).json({ error: 'Failed to fetch video details' });
     }
 });
 // Start the server
