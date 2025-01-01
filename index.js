@@ -317,7 +317,61 @@ app.get('/anime-status2', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+async function cocofun(url) {
+  return new Promise((resolve, reject) => {
+    axios({
+      url,
+      method: "get",
+      headers: {
+        Cookie: "client_id=1a5afdcd-5574-4cfd-b43b-b30ad14c230e",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
+      }
+    })
+    .then((response) => {
+      const $ = cheerio.load(response.data);
+      let appState;
+      const scriptAppState = $("script#appState").get();
+      for (let script of scriptAppState) {
+        if (script.children && script.children[0] && script.children[0].data) {
+          const appStateString = script.children[0].data.split("window.APP_INITIAL_STATE=")[1];
+          appState = JSON.parse(appStateString);
+        }
+      }
+      const result = {
+        status: 200,
+        topic: appState.share.post.post.content || appState.share.post.post.topic.topic,
+        caption: $("meta[property='og:description']").attr("content"),
+        play: appState.share.post.post.playCount,
+        like: appState.share.post.post.likes,
+        share: appState.share.post.post.share,
+        duration: appState.share.post.post.videos[appState.share.post.post.imgs[0].id].dur,
+        thumbnail: appState.share.post.post.videos[appState.share.post.post.imgs[0].id].coverUrls[0],
+        watermark: appState.share.post.post.videos[appState.share.post.post.imgs[0].id].urlwm,
+        no_watermark: appState.share.post.post.videos[appState.share.post.post.imgs[0].id].url
+      };
+      resolve(result);
+    })
+    .catch((error) => {
+      reject(error);
+    });
+  });
+}
 
+// API endpoint
+app.get('/api/cocofun', async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) {
+    return res.status(400).json({ error: 'URL parameter is required' });
+  }
+
+  try {
+    const data = await cocofun(url);
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch data', details: error.message });
+  }
+});
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
