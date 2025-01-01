@@ -397,6 +397,48 @@ app.get('/api/ffstalk', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+async function film(query) {
+    try {
+        let { data } = await axios.get('https://ruangmoviez.my.id/?s=' + query);
+        let $ = cheerio.load(data);
+        const movies = [];
+
+        $('article.item-infinite').each((index, element) => {
+            const movie = {};
+            movie.link = $(element).find('a[itemprop="url"]').attr('href');
+            movie.title = $(element).find('h2.entry-title a').text();
+            movie.relTag = $(element).find('a[rel="category tag"]').map((i, el) => $(el).text()).get();
+            movies.push(movie);
+        });
+
+        return {
+            status: 200,
+            creator: '@michelle.js - Claires',
+            result: movies
+        };
+    } catch (e) {
+        return {
+            status: 404,
+            msg: e.message
+        };
+    }
+}
+
+// API Endpoint
+app.get('/api/film', async (req, res) => {
+    const { query } = req.query;
+
+    if (!query) {
+        return res.status(400).json({ error: 'Query parameter is required' });
+    }
+
+    try {
+        const data = await film(query);
+        res.status(200).json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch movie data', details: error.message });
+    }
+});
 
 // Start the server
 app.listen(PORT, () => {
