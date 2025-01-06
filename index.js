@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require("cheerio");
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 // Endpoint to fetch GitHub user data using query parameter
 app.get('/api/githubstalk', async (req, res) => {
