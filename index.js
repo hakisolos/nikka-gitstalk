@@ -4,6 +4,14 @@ const cheerio = require("cheerio");
 const app = express();
 const PORT = process.env.PORT || 8000;
 
+const bodyParser = require('body-parser');
+const wabetainfo = require('nima-wabeta-info');
+
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+
 // Endpoint to fetch GitHub user data using query parameter
 app.get('/api/githubstalk', async (req, res) => {
     const user = req.query.q;
@@ -425,4 +433,73 @@ app.get('/api/tikdl', async (req, res) => {
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+});
+app.get("/details/wabetainfo", async (req, res) => {
+    try {
+        const data = await wabetainfo.getLatest();
+        res.status(200).send({ 
+            status: 200, 
+            developer: 'Maher Zubair', 
+            result: data.result 
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(400).send({ 
+            status: 400, 
+            developer: 'Maher Zubair', 
+            error: err.message 
+        });
+    }
+});
+
+app.get("/details/wabetainfo-all", async (req, res) => {
+    try {
+        const data = await wabetainfo.getAll();
+        res.status(200).send({ 
+            status: 200, 
+            developer: 'Maher Zubair', 
+            result: data.result 
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(400).send({ 
+            status: 400, 
+            developer: 'Maher Zubair', 
+            error: err.message 
+        });
+    }
+});
+
+app.get("/details/wabetainfo-details", async (req, res) => {
+    const q = req.query.q;
+    if (!q) {
+        return res.status(400).send({ 
+            status: 400, 
+            developer: 'Maher Zubair', 
+            error: 'Missing query parameter "q"' 
+        });
+    }
+    try {
+        const data = await wabetainfo.getFromLink(q);
+        res.status(200).send({ 
+            status: 200, 
+            developer: 'Maher Zubair', 
+            result: data.result 
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(400).send({ 
+            status: 400, 
+            developer: 'Maher Zubair', 
+            error: err.message 
+        });
+    }
+});
+
+// Handle 404 for undefined routes
+app.use((req, res) => {
+    res.status(404).send({
+        status: 404,
+        message: "Route not found"
+    });
 });
